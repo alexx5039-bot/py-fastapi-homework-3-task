@@ -1,19 +1,25 @@
+import sys
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+sys.path.append(str(ROOT_DIR))
+
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config import get_settings
-from database import (
+from src.config import get_settings
+from src.database import (
     reset_database,
     get_db_contextmanager,
     UserGroupEnum,
     UserGroupModel
 )
-from database.populate import CSVDatabaseSeeder
-from main import app
-from security.interfaces import JWTAuthManagerInterface
-from security.token_manager import JWTAuthManager
+from src.database.populate import CSVDatabaseSeeder
+from src.main import app
+from src.security.interfaces import JWTAuthManagerInterface
+from src.security.token_manager import JWTAuthManager
 
 
 @pytest_asyncio.fixture(scope="function", autouse=True)

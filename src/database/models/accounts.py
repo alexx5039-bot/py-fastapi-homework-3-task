@@ -2,6 +2,7 @@ import enum
 from datetime import datetime, date, timedelta, timezone
 from typing import List, Optional
 
+
 from sqlalchemy import (
     ForeignKey,
     String,
@@ -12,19 +13,23 @@ from sqlalchemy import (
     func,
     Text,
     Date,
-    UniqueConstraint
+    UniqueConstraint,
 )
+
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
     relationship,
     validates
 )
+from starlette import status
 
-from database import Base
-from database.validators import accounts as validators
-from security.passwords import hash_password, verify_password
-from security.utils import generate_secure_token
+from schemas import UserRegistrationRequestSchema
+from schemas.accounts import UserResponseSchema
+from src.database import Base
+from src.database.validators import accounts as validators
+from src.security.passwords import hash_password, verify_password
+from src.security.utils import generate_secure_token
 
 
 class UserGroupEnum(str, enum.Enum):
