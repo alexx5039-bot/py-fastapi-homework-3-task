@@ -22,10 +22,6 @@ from sqlalchemy.orm import (
     relationship,
     validates
 )
-from starlette import status
-
-from schemas import UserRegistrationRequestSchema
-from schemas.accounts import UserResponseSchema
 from src.database import Base
 from src.database.validators import accounts as validators
 from src.security.passwords import hash_password, verify_password

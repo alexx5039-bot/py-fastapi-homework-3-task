@@ -1,9 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import cast
 
 from config import get_jwt_auth_manager
 from database import RefreshTokenModel
 from exceptions import BaseSecurityError
+from schemas import TokenRefreshResponseSchema
 from security.interfaces import JWTAuthManagerInterface
 from src.schemas.accounts import PasswordResetRequestSchema, UserLoginRequestSchema, RefreshTokenRequestSchema, \
     PasswordResetCompleteRequestSchema
@@ -174,7 +175,7 @@ async def request_password_reset(
 async def reset_password_complete(
     data: PasswordResetCompleteRequestSchema,
     db: AsyncSession = Depends(get_db),
-    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+
 ):
     try:
         result = await db.execute(
@@ -285,6 +286,8 @@ async def login_user(
             "token_type": "bearer",
         }
 
+    except HTTPException:
+        raise
     except SQLAlchemyError:
         await db.rollback()
         raise HTTPException(
@@ -293,31 +296,27 @@ async def login_user(
         )
 
 
-@router.post("/refresh/")
+@router.post(
+    "/refresh/",
+    response_model=TokenRefreshResponseSchema,
+    status_code=status.HTTP_200_OK,
+)
 async def refresh_access_token(
     data: RefreshTokenRequestSchema,
     db: AsyncSession = Depends(get_db),
     jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
 ):
     try:
-
         try:
             payload = jwt_manager.decode_refresh_token(data.refresh_token)
         except BaseSecurityError as exc:
             if "expired" in str(exc).lower():
                 raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
+                    status_code=400,
                     detail="Token has expired.",
                 )
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid refresh token.",
-            )
-
-        user_id = payload.get("user_id") or payload.get("sub")
-        if not user_id:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
+                status_code=401,
                 detail="Invalid refresh token.",
             )
 
@@ -334,6 +333,8 @@ async def refresh_access_token(
                 detail="Refresh token not found.",
             )
 
+        user_id = payload.get("user_id") or payload.get("sub")
+
         result = await db.execute(
             select(UserModel).where(UserModel.id == int(user_id))
         )
@@ -345,11 +346,9 @@ async def refresh_access_token(
                 detail="User not found.",
             )
 
-        access_payload = {
-            "sub": str(user.id),
-            "user_id": user.id,
-        }
-        new_access_token = jwt_manager.create_access_token(access_payload)
+        new_access_token = jwt_manager.create_access_token(
+            {"sub": str(user.id), "user_id": user.id}
+        )
 
         return {
             "access_token": new_access_token,

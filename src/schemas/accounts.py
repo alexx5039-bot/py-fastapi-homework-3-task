@@ -49,9 +49,6 @@ class UserLoginResponseSchema(BaseModel):
     token_type: str
 
 
-class TokenRefreshRequestSchema(BaseModel):
-    refresh_token: str = Field(..., min_length=1)
-
-
 class TokenRefreshResponseSchema(BaseModel):
     access_token: str
+    token_type: str
