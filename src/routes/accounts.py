@@ -33,6 +33,12 @@ from src.schemas.accounts import (
 router = APIRouter()
 
 
+def ensure_utc(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
 @router.post(
     "/register/",
     response_model=UserResponseSchema,
@@ -123,7 +129,7 @@ async def activate_user(
     if (
         not token
         or token.token != data.token
-        or token.expires_at < datetime.utcnow()
+        or ensure_utc(token.expires_at) < datetime.now(timezone.utc)
     ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -206,7 +212,7 @@ async def reset_password_complete(
                 detail="Invalid email or token.",
             )
 
-        if reset_token.expires_at < datetime.utcnow():
+        if ensure_utc(reset_token.expires_at) < datetime.now(timezone.utc):
             await db.delete(reset_token)
             await db.commit()
 
@@ -271,12 +277,13 @@ async def login_user(
             )
         )
 
-        db.add(
-            RefreshTokenModel(
-                user_id=user.id,
-                token=refresh_token,
-            )
+        refresh_token_obj = RefreshTokenModel.create(
+            user_id=user.id,
+            token=refresh_token,
+            days_valid=7,
         )
+
+        db.add(refresh_token_obj)
 
         await db.commit()
 
